@@ -1,5 +1,8 @@
-from flask import jsonify, Blueprint
+from datetime import datetime
 
+from flask import jsonify, Blueprint, request
+
+from fluxo_api import db
 from fluxo_api.emprestimos.emprestimo import Emprestimo
 
 emprestimos = Blueprint('emprestimos', __name__)
@@ -22,3 +25,21 @@ def mostrar_todos():
         output.append(data)
 
     return jsonify({'Emprestimos': output})
+
+@emprestimos.route('/emprestimos', methods=['POST'])
+def criar_emprestimo():
+    data = request.get_json()
+
+    equip_em_uso = (Emprestimo.query
+                    .filter(Emprestimo.data_entrega == None, Emprestimo.id_equipamento == data['id_equipamento']).
+                    count())
+
+    if equip_em_uso:
+        return jsonify({"erro":"Equipamento em uso!"})
+
+    novo_emprestimo = Emprestimo(data['id_equipamento'], data['id_usuario'], datetime.utcnow())
+
+    db.session.add(novo_emprestimo)
+    db.session.commit()
+
+    return jsonify({'messagem': 'Emprestimo cadastrado com sucesso!'})
